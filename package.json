@@ -1,0 +1,22 @@
+{
+  "name": "media-parser",
+  "version": "1.0.0",
+  "description": "抖音/快手/B站 等视频、图片批量无水印下载工具（Windows 本地 CLI + 可嵌入个人网站的 Web 服务）",
+  "main": "core/index.js",
+  "type": "commonjs",
+  "bin": {
+    "media-parser": "cli.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "cli": "node cli.js",
+    "test": "node tests/run.js",
+    "test:unit": "node tests/unit.js",
+    "test:live": "node tests/live.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT",
+  "dependencies": {}
+}

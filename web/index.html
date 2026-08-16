@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Media Parser · 批量无水印下载</title>
+<style>
+  :root{
+    --bg:#f5f6fa; --card:#fff; --line:#e4e7ef; --text:#1f2430; --sub:#6b7280;
+    --primary:#4f6ef7; --primary-dark:#3d56d6; --ok:#16a34a; --warn:#d97706; --err:#dc2626;
+    --radius:12px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{font-family:"PingFang SC","Microsoft YaHei",-apple-system,"Segoe UI",Roboto,sans-serif;
+       background:var(--bg); color:var(--text); line-height:1.6; padding:16px; min-height:100vh}
+  .wrap{max-width:860px; margin:0 auto}
+  header{display:flex; align-items:center; gap:12px; margin-bottom:18px; flex-wrap:wrap}
+  header .logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#4f6ef7,#8b5cf6);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px}
+  header h1{font-size:20px}
+  header .sub{color:var(--sub);font-size:13px;width:100%}
+  .badges{display:flex;gap:6px;flex-wrap:wrap}
+  .badge{font-size:11px;padding:2px 8px;border-radius:99px;background:#e8edff;color:var(--primary);border:1px solid #d5ddfc}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+  .tabs{display:flex;gap:8px;margin-bottom:14px}
+  .tab{padding:6px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:14px}
+  .tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+  textarea{width:100%;min-height:76px;resize:vertical;border:1px solid var(--line);border-radius:8px;padding:10px;
+    font-size:14px;font-family:inherit;outline:none}
+  textarea:focus{border-color:var(--primary)}
+  .row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .btn{border:none;border-radius:8px;padding:9px 18px;font-size:14px;cursor:pointer;color:#fff;background:var(--primary)}
+  .btn:hover{background:var(--primary-dark)}
+  .btn.ghost{background:#eef1f8;color:var(--text)}
+  .btn.small{padding:5px 10px;font-size:12px;border-radius:6px}
+  .btn.ok{background:var(--ok)} .btn.warn{background:var(--warn)}
+  .btn:disabled{opacity:.55;cursor:not-allowed}
+  .hint{font-size:12px;color:var(--sub);margin-top:8px}
+  #status{margin-top:12px;font-size:14px;display:none}
+  #status.show{display:block}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid #cbd5e1;border-top-color:var(--primary);
+    border-radius:50%;animation:sp 0.8s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .err{color:var(--err);background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;margin-top:10px;font-size:14px}
+  .res{border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:14px;background:#fff}
+  .res-head{display:flex;gap:12px;align-items:flex-start}
+  .res-cover{width:96px;height:96px;object-fit:cover;border-radius:8px;background:#f1f3f9;flex-shrink:0;border:1px solid var(--line)}
+  .res-meta{flex:1;min-width:0}
+  .res-title{font-size:15px;font-weight:600;word-break:break-all;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .res-sub{font-size:12px;color:var(--sub);margin-top:4px}
+  .tag{display:inline-block;font-size:11px;padding:1px 8px;border-radius:99px;margin-right:6px;vertical-align:1px}
+  .tag.douyin{background:#111;color:#fff}.tag.kuaishou{background:#ff5000;color:#fff}.tag.bilibili{background:#fb7299;color:#fff}
+  .tag.video{background:#eef2ff;color:#4f46e5}.tag.image{background:#f0fdf4;color:#15803d}
+  .items{margin-top:10px}
+  .item{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-top:8px;flex-wrap:wrap;font-size:13px}
+  .item .fname{flex:1;min-width:160px;word-break:break-all}
+  .item .q{font-size:11px;color:var(--sub)}
+  .item a.btn{text-decoration:none}
+  .copyable{font-size:11px;color:var(--sub);word-break:break-all;width:100%;margin-top:4px;cursor:pointer}
+  footer{color:var(--sub);font-size:12px;text-align:center;margin-top:24px}
+  .divider{height:1px;background:var(--line);margin:14px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">MP</div>
+    <h1>Media Parser</h1>
+    <div class="badges">
+      <span class="badge">抖音</span><span class="badge">快手</span><span class="badge">哔哩哔哩</span>
+      <span class="badge">视频 / 图文 · 无水印</span><span class="badge">批量下载</span>
+    </div>
+    <div class="sub">粘贴分享链接或完整分享文本，解析后即可无水印下载。可 <code>&lt;iframe&gt;</code> 嵌入个人网站。</div>
+  </header>
+
+  <div class="card">
+    <div class="tabs">
+      <div class="tab active" data-tab="single">单个解析</div>
+      <div class="tab" data-tab="batch">批量解析</div>
+    </div>
+
+    <div id="panel-single">
+      <textarea id="input" placeholder="粘贴抖音/快手/B站分享链接或分享文本，例如：&#10;7.43 复制打开抖音... https://v.douyin.com/xxxx/ &#10;https://www.bilibili.com/video/BV1xx411c7mD"></textarea>
+      <div class="row">
+        <button class="btn" id="btn-parse">解析</button>
+        <button class="btn ghost" id="btn-clear">清空</button>
+      </div>
+    </div>
+
+    <div id="panel-batch" style="display:none">
+      <textarea id="batch-input" placeholder="每行一个链接或分享文本，支持混合平台：&#10;https://v.douyin.com/xxx/&#10;https://v.kuaishou.com/xxx&#10;https://www.bilibili.com/video/BVxxx"></textarea>
+      <div class="row">
+        <button class="btn" id="btn-batch">批量解析</button>
+      </div>
+      <div class="hint">批量模式只解析并列出下载链接（不自动下载文件，逐个点击即可）。</div>
+    </div>
+  </div>
+
+  <div id="status"></div>
+  <div id="results"></div>
+
+  <footer>仅供个人学习研究使用 · 请遵守平台规则与相关法律法规</footer>
+</div>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const state = { results: [] };
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tab').forEach((tab) => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+    tab.classList.add('active');
+    $('panel-single').style.display = tab.dataset.tab === 'single' ? '' : 'none';
+    $('panel-batch').style.display = tab.dataset.tab === 'batch' ? '' : 'none';
+  });
+});
+
+/* ---------- status ---------- */
+function setStatus(html, isErr) {
+  const el = $('status');
+  el.className = 'show';
+  el.innerHTML = isErr ? `<div class="err">${html}</div>` : html;
+}
+function clearStatus() { $('status').className = ''; $('status').innerHTML = ''; }
+function spinner(text) { return `<span class="spin"></span>${text}`; }
+
+/* ---------- api ---------- */
+async function apiParse(text) {
+  const r = await fetch('/api/parse', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  });
+  return r.json();
+}
+async function apiBatch(texts) {
+  const r = await fetch('/api/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ texts, concurrency: 3 }),
+  });
+  return r.json();
+}
+
+/* ---------- rendering ---------- */
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function copyText(text, btn) {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(() => {
+      const old = btn.textContent; btn.textContent = '已复制 ✓';
+      setTimeout(() => (btn.textContent = old), 1200);
+    }).catch(() => fallbackCopy(text, btn));
+  } else fallbackCopy(text, btn);
+}
+function fallbackCopy(text, btn) {
+  const ta = document.createElement('textarea');
+  ta.value = text; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); btn.textContent = '已复制 ✓'; setTimeout(() => (btn.textContent = '复制链接'), 1200); }
+  catch (e) { alert('复制失败，请手动复制'); }
+  document.body.removeChild(ta);
+}
+
+function renderResult(r, idx) {
+  const tagCls = r.platform === 'douyin' ? 'douyin' : r.platform === 'kuaishou' ? 'kuaishou' : 'bilibili';
+  const typeTag = r.type === 'image' ? 'image' : 'video';
+  const typeName = r.type === 'image' ? '图文' : '视频';
+  const head = `
+    <div class="res-head">
+      ${r.cover ? `<img class="res-cover" src="${esc(r.cover)}" alt="cover" referrerpolicy="no-referrer">` : '<div class="res-cover"></div>'}
+      <div class="res-meta">
+        <div class="res-title">${esc(r.title)}</div>
+        <div class="res-sub">
+          <span class="tag ${tagCls}">${esc(r.platformName)}</span>
+          <span class="tag ${typeTag}">${typeName}</span>
+          ${r.duration ? `<span>时长 ${r.duration}s</span>` : ''}
+          ${r.pages ? `<span>共 ${r.pages}P</span>` : ''}
+          <div style="margin-top:2px">作者：${esc(r.author)}</div>
+        </div>
+      </div>
+    </div>`;
+
+  let itemsHtml = '<div class="items">';
+  const isBiliDash = r.bvid && r.cid && r.items.some((i) => i.dash);
+  if (isBiliDash) {
+    itemsHtml += `
+      <div class="item" style="background:#f0f6ff;border-color:#bcd0fb">
+        <span class="fname"><b>一键合并下载（含音轨）</b></span>
+        <a class="btn small ok" href="/api/download/merged?bvid=${encodeURIComponent(r.bvid)}&cid=${encodeURIComponent(r.cid)}&title=${encodeURIComponent(r.title)}">下载 MP4</a>
+      </div>`;
+  }
+  r.items.forEach((it) => {
+    const dl = `/api/download?url=${encodeURIComponent(it.url)}&filename=${encodeURIComponent(it.filename)}&platform=${encodeURIComponent(r.platform)}&kind=${encodeURIComponent(it.kind)}`;
+    itemsHtml += `
+      <div class="item">
+        <span class="fname">${esc(it.filename)}</span>
+        ${it.quality ? `<span class="q">${esc(it.quality)}</span>` : ''}
+        <a class="btn small" href="${dl}">下载</a>
+        <button class="btn small ghost" data-copy="${esc(it.url)}">复制链接</button>
+        <div class="copyable" data-copy-url="${esc(it.url)}">${esc(it.url)}</div>
+      </div>`;
+  });
+  itemsHtml += '</div>';
+
+  const el = document.createElement('div');
+  el.className = 'res';
+  el.innerHTML = head + itemsHtml;
+  el.querySelectorAll('[data-copy]').forEach((b) => {
+    b.addEventListener('click', () => copyText(b.dataset.copy, b));
+  });
+  return el;
+}
+
+/* ---------- actions ---------- */
+$('btn-parse').addEventListener('click', async () => {
+  const text = $('input').value.trim();
+  if (!text) { setStatus('请先粘贴链接或分享文本', true); return; }
+  clearStatus();
+  $('btn-parse').disabled = true;
+  setStatus(spinner('正在解析，请稍候…'));
+  try {
+    const data = await apiParse(text);
+    if (!data.ok) { setStatus(esc(data.error || '解析失败'), true); return; }
+    clearStatus();
+    const box = $('results');
+    box.innerHTML = '';
+    box.appendChild(renderResult(data.result));
+  } catch (e) {
+    setStatus('请求失败：' + esc(e.message), true);
+  } finally {
+    $('btn-parse').disabled = false;
+  }
+});
+
+$('btn-batch').addEventListener('click', async () => {
+  const raw = $('batch-input').value.trim();
+  if (!raw) { setStatus('请粘贴多个链接', true); return; }
+  const texts = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  clearStatus();
+  $('btn-batch').disabled = true;
+  setStatus(spinner(`正在批量解析 ${texts.length} 条，请稍候…`));
+  try {
+    const data = await apiBatch(texts);
+    if (!data.ok) { setStatus(esc(data.error || '批量解析失败'), true); return; }
+    const box = $('results');
+    box.innerHTML = '';
+    const okList = data.results.filter((x) => x.ok);
+    const failList = data.results.filter((x) => !x.ok);
+    if (okList.length === 0 && failList.length === 0) {
+      setStatus('没有可解析的内容', true);
+      return;
+    }
+    let summary = `<div class="res" style="font-size:14px">解析完成：成功 <b>${okList.length}</b> 条，失败 <b>${failList.length}</b> 条</div>`;
+    box.insertAdjacentHTML('beforeend', summary);
+    okList.forEach((x, i) => box.appendChild(renderResult(x.result, i)));
+    if (failList.length) {
+      const failEl = document.createElement('div');
+      failEl.className = 'res';
+      failEl.innerHTML = failList.map((x) => `<div class="err" style="margin-top:6px">${esc(x.input)}<br>→ ${esc(x.error)}</div>`).join('');
+      box.appendChild(failEl);
+    }
+    clearStatus();
+  } catch (e) {
+    setStatus('批量请求失败：' + esc(e.message), true);
+  } finally {
+    $('btn-batch').disabled = false;
+  }
+});
+
+$('btn-clear').addEventListener('click', () => {
+  $('input').value = '';
+  $('results').innerHTML = '';
+  clearStatus();
+});
+
+/* 回车快捷解析（单行时） */
+$('input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('btn-parse').click(); }
+});
+</script>
+</body>
+</html>
